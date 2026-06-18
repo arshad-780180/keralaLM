@@ -5,6 +5,7 @@ import shutil
 import urllib.parse
 import requests
 from bs4 import BeautifulSoup
+from datetime import date
 
 # Step 1: Base Inputs
 url = input("🔗 Paste the Malayalam Wikipedia URL: ").strip()
@@ -262,6 +263,7 @@ output_dir = os.path.join(data_root, category)
 ensure_dir(output_dir)
 
 subfolder_name = choose_or_create_folder(output_dir, "subfolder", allow_none=True)
+subcategory_label = "none"
 if subfolder_name:
     output_dir = os.path.join(output_dir, subfolder_name)
     ensure_dir(output_dir)
@@ -269,7 +271,9 @@ if subfolder_name:
     if subsubfolder_name:
         output_dir = os.path.join(output_dir, subsubfolder_name)
         ensure_dir(output_dir)
-        subfolder_name = subsubfolder_name
+        subcategory_label = f"{subfolder_name}->{subsubfolder_name}"
+    else:
+        subcategory_label = subfolder_name
 else:
     subfolder_name = "none"
 
@@ -328,7 +332,7 @@ try:
 
             csv_exists = os.path.isfile(csv_path)
 
-            csv_row = f"{filename},Malayalam Wikipedia,{category.capitalize()},{subfolder_name},2026-06-17,{words},{url}\n"
+            csv_row = f"{filename},Malayalam Wikipedia,{category.capitalize()},{subcategory_label},{date.today()},{words},{url}\n"
 
             with open(csv_path, "a", encoding="utf-8") as csv_file:
                 if not csv_exists:

@@ -1,28 +1,9 @@
 import os
 import re
-"""
-subfolder_choice = (
-    input("📁 Do you need a subfolder inside this category? (y/n): ")
-    .strip()
-)
-
-if subfolder_choice == "y":
-        input("✍️ Enter name of the subfolder: ").strip().lower().replace(" ", "_")
-    )
-    output_dir = os.path.join("data", "wikipedia", category, subfolder_name)
-else:
-os.makedirs(output_dir, exist_ok=True)
-
-# Step 3: English file tracking label
-    input("🔤 Enter short English name for the file (e.g., bicycle_history): ")
-    .strip()
-    .lower()
-
-import os
-import re
 import urllib.parse
 import requests
 from bs4 import BeautifulSoup
+from datetime import date
 
 # Step 1: Base Inputs
 url = input("🔗 Paste the Malayalam Wikipedia URL: ").strip()
@@ -30,7 +11,30 @@ category = (
     input("📂 Enter base category (technology / science / geography / history): ")
     .strip()
     .lower()
+    .replace(" ", "_")
 )
+
+# Step 2: Subfolder Logic
+subfolder_choice = (
+    input("📁 Do you need a subfolder inside this category? (y/n): ")
+    .strip()
+    .lower()
+)
+
+if subfolder_choice == "y":
+    subfolder_name = input("✍️ Enter name of the subfolder: ").strip().lower().replace(" ", "_")
+    output_dir = os.path.join("data", "wikipedia", category, subfolder_name)
+else:
+    subfolder_name = "none"  # Fallback to match your metadata manager defaults
+    output_dir = os.path.join("data", "wikipedia", category)
+
+os.makedirs(output_dir, exist_ok=True)
+
+# Step 3: English file tracking label
+english_label = (
+    input("🔤 Enter short English name for the file (e.g., bicycle_history): ")
+    .strip()
+    .lower()
     .replace(" ", "_")
 )
 filename = f"{english_label}.txt"
@@ -55,11 +59,13 @@ try:
                 [p.get_text() for p in paragraphs if p.get_text().strip() != ""]
             )
 
+            # Clean out Wikipedia citation markers like [1], [2], etc.
             clean_text = re.sub(r"\[\d+\]", "", article_text)
 
             raw_title = url.split("/")[-1]
             malayalam_title = urllib.parse.unquote(raw_title).replace("_", " ")
 
+            # Write out the structural text file
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(f"TITLE: {malayalam_title}\n")
                 f.write(f"CATEGORY: {category.upper()}\n")
@@ -76,16 +82,22 @@ try:
             os.makedirs(csv_dir, exist_ok=True)
 
             csv_exists = os.path.isfile(csv_path)
+            current_date = str(date.today())
 
-            csv_row = f"{filename},Malayalam Wikipedia,{category.capitalize()},{subfolder_name},2026-06-17,{words},{url}\n"
+            # Formats the row to match the schema expected by your metadata editor
+            csv_row = f"{filename},Malayalam Wikipedia,{category.capitalize()},{subfolder_name},{current_date},{words},{url}\n"
 
-            with open(csv_path, "a", encoding="utf-8") as csv_file:
-                if not csv_exists:
-                    # '\ufeff' is the magic BOM signature that forces Excel to show Malayalam correctly
-                    csv_file.write(
-                        "\ufefffilename,source,category,subcategory,date,word_count,link\n"
-                    )
-                csv_file.write(csv_row)
+            try:
+                with open(csv_path, "a", encoding="utf-8") as csv_file:
+                    if not csv_exists:
+                        # '\ufeff' BOM signature keeps Malayalam fonts pristine in Excel
+                        csv_file.write(
+                            "\ufefffilename,source,category,subcategory,date,word_count,link\n"
+                        )
+                    csv_file.write(csv_row)
+            except PermissionError:
+                print(f"\n⚠️ Warning: Could not log metadata automatically because '{csv_path}' is open in Excel.")
+                print("Please close Excel if you plan to modify rows via scripts later.")
             # -----------------------------------------------------
 
             print("-" * 60)
@@ -94,7 +106,7 @@ try:
             print(f"✅ Metadata: Automatically logged entry inside {csv_path}!")
             print("-" * 60)
         else:
-            print("❌ Error: Could not extract layout content.")
+            print("❌ Error: Could not extract layout content from the page structure.")
     else:
         print(f"❌ Wikipedia request failed with Status Code: {response.status_code}")
 
