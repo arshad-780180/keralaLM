@@ -12,5 +12,33 @@
     "path": "metadata\\sources.csv",
     "row": "mathematics_history.txt,Malayalam Wikipedia,Wikipedia,mathematics,2026-06-17,1065,https://ml.wikipedia.org/wiki/%E0%B4%97%E0%B4%A3%E0%B4%BF%E0%B4%A4%E0%B4%82\n",
     "csv_created": false
+  },
+  {
+    "type": "create_dir",
+    "path": "data\\wikipedia\\science\\chemistry"
+  },
+  {
+    "type": "create_file",
+    "path": "data\\wikipedia\\science\\chemistry\\chemistry_history.txt"
+  },
+  {
+    "type": "append_csv",
+    "path": "metadata\\sources.csv",
+    "row": "chemistry_history.txt,Malayalam Wikipedia,Wikipedia,science->chemistry,2026-06-18,440,https://ml.wikipedia.org/wiki/%E0%B4%B0%E0%B4%B8%E0%B4%A4%E0%B4%A8%E0%B5%8D%E0%B4%A4%E0%B5%8D%E0%B4%B0%E0%B4%82\n",
+    "csv_created": false
+  },
+  {
+    "type": "create_dir",
+    "path": "data\\wikipedia\\science\\chemistry"
+  },
+  {
+    "type": "create_file",
+    "path": "data\\wikipedia\\science\\chemistry\\chemistry_history.txt"
+  },
+  {
+    "type": "append_csv",
+    "path": "metadata\\sources.csv",
+    "row": "chemistry_history.txt,Malayalam Wikipedia,Wikipedia,science->chemistry,2026-06-18,438,https://ml.wikipedia.org/wiki/%E0%B4%B0%E0%B4%B8%E0%B4%A4%E0%B4%A8%E0%B5%8D%E0%B4%A4%E0%B5%8D%E0%B4%B0%E0%B4%82\n",
+    "csv_created": false
   }
 ]

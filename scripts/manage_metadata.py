@@ -20,20 +20,22 @@ REQUIRED_FIELDS = {"filename", "category", "word_count"}
 def ensure_csv_exists():
     os.makedirs(CSV_DIR, exist_ok=True)
     if not os.path.exists(CSV_FILE) or os.path.getsize(CSV_FILE) == 0:
-        with open(CSV_FILE, "w", encoding="utf-8", newline="") as csvfile:
+        # Changed encoding to utf-8-sig to handle Excel signatures gracefully
+        with open(CSV_FILE, "w", encoding="utf-8-sig", newline="") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=HEADER)
             writer.writeheader()
 
-
 def read_rows():
     ensure_csv_exists()
-    with open(CSV_FILE, "r", encoding="utf-8", newline="") as csvfile:
+    # Changed encoding to utf-8-sig to automatically strip off the \ufeff character
+    with open(CSV_FILE, "r", encoding="utf-8-sig", newline="") as csvfile:
         reader = csv.DictReader(csvfile)
         return list(reader)
 
 
 def write_rows(rows):
-    with open(CSV_FILE, "w", encoding="utf-8", newline="") as csvfile:
+    # Changed encoding to utf-8-sig so it writes a clean, Excel-safe BOM file natively
+    with open(CSV_FILE, "w", encoding="utf-8-sig", newline="") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=HEADER)
         writer.writeheader()
         writer.writerows(rows)

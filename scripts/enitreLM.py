@@ -217,6 +217,31 @@ def normalize_folder_name(name):
     return name.strip().lower().replace(" ", "_")
 
 
+def clean_article_text(text):
+    def remove_urls(line):
+        return re.sub(r"https?://\S+|www\.\S+", "", line)
+
+    stub_keywords = ["stub", "this article is a stub"]
+    cleaned_lines = []
+
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        lower_line = line.lower()
+        if any(keyword in lower_line for keyword in stub_keywords):
+            continue
+        if re.fullmatch(r"[\W_]+", line):
+            continue
+        line = remove_urls(line)
+        line = re.sub(r"\[\d+\]", "", line)
+        line = re.sub(r"\s{2,}", " ", line).strip()
+        if line:
+            cleaned_lines.append(line)
+
+    return "\n\n".join(cleaned_lines)
+
+
 def choose_or_create_folder(parent_dir, folder_type, allow_none=False):
     existing = sorted(
         [
@@ -303,10 +328,10 @@ try:
         if content_div:
             paragraphs = content_div.find_all("p")
             article_text = "\n\n".join(
-                [p.get_text() for p in paragraphs if p.get_text().strip() != ""]
+                [p.get_text() for p in paragraphs if p.get_text().strip()]
             )
 
-            clean_text = re.sub(r"\[\d+\]", "", article_text)
+            clean_text = clean_article_text(article_text)
 
             raw_title = url.split("/")[-1]
             malayalam_title = urllib.parse.unquote(raw_title).replace("_", " ")
