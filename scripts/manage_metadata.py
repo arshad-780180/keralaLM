@@ -159,7 +159,7 @@ def main_menu():
         print("5. Total word count")
         print("6. Exit")
 
-        choice = input("Choose an option: ").strip()
+        choice = input("Choose an option (or type 'exit' to quit): ").strip().lower()
         if choice == "1":
             display_rows(read_rows())
         elif choice == "2":
@@ -171,11 +171,11 @@ def main_menu():
         elif choice == "5":
             rows = read_rows()
             display_rows(rows)
-        elif choice == "6":
+        elif choice == "6" or choice == "exit" or choice == "quit":
             print("Exiting CSV editor.")
             break
         else:
-            print("Invalid option. Please choose a number from 1 to 6.")
+            print("Invalid option. Please choose a number from 1 to 6, or type 'exit'.")
 
 
 if __name__ == "__main__":

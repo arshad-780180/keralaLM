@@ -1,0 +1,16 @@
+[
+  {
+    "type": "create_dir",
+    "path": "data\\wikipedia\\science\\mathematics"
+  },
+  {
+    "type": "create_file",
+    "path": "data\\wikipedia\\science\\mathematics\\mathematics_history.txt"
+  },
+  {
+    "type": "append_csv",
+    "path": "metadata\\sources.csv",
+    "row": "mathematics_history.txt,Malayalam Wikipedia,Wikipedia,mathematics,2026-06-17,1065,https://ml.wikipedia.org/wiki/%E0%B4%97%E0%B4%A3%E0%B4%BF%E0%B4%A4%E0%B4%82\n",
+    "csv_created": false
+  }
+]

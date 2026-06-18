@@ -1,5 +1,25 @@
 import os
 import re
+"""
+subfolder_choice = (
+    input("📁 Do you need a subfolder inside this category? (y/n): ")
+    .strip()
+)
+
+if subfolder_choice == "y":
+        input("✍️ Enter name of the subfolder: ").strip().lower().replace(" ", "_")
+    )
+    output_dir = os.path.join("data", "wikipedia", category, subfolder_name)
+else:
+os.makedirs(output_dir, exist_ok=True)
+
+# Step 3: English file tracking label
+    input("🔤 Enter short English name for the file (e.g., bicycle_history): ")
+    .strip()
+    .lower()
+
+import os
+import re
 import urllib.parse
 import requests
 from bs4 import BeautifulSoup
@@ -11,30 +31,6 @@ category = (
     .strip()
     .lower()
 )
-
-# Step 2: Dynamic Subfolder Management
-subfolder_choice = (
-    input("📁 Do you need a subfolder inside this category? (y/n): ")
-    .strip()
-    .lower()
-)
-
-if subfolder_choice == "y":
-    subfolder_name = (
-        input("✍️ Enter name of the subfolder: ").strip().lower().replace(" ", "_")
-    )
-    output_dir = os.path.join("data", "wikipedia", category, subfolder_name)
-else:
-    subfolder_name = "none"
-    output_dir = os.path.join("data", "wikipedia", category)
-
-os.makedirs(output_dir, exist_ok=True)
-
-# Step 3: English file tracking label
-english_label = (
-    input("🔤 Enter short English name for the file (e.g., bicycle_history): ")
-    .strip()
-    .lower()
     .replace(" ", "_")
 )
 filename = f"{english_label}.txt"

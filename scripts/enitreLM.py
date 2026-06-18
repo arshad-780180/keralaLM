@@ -1,5 +1,7 @@
 import os
 import re
+import json
+import shutil
 import urllib.parse
 import requests
 from bs4 import BeautifulSoup
@@ -8,7 +10,206 @@ from bs4 import BeautifulSoup
 url = input("🔗 Paste the Malayalam Wikipedia URL: ").strip()
 
 data_root = "data"
-os.makedirs(data_root, exist_ok=True)
+def ensure_dir(path, record=True):
+    existed = os.path.exists(path)
+    os.makedirs(path, exist_ok=True)
+    created = not existed and os.path.exists(path)
+    if created and record:
+        push_action({"type": "create_dir", "path": path})
+    return created
+
+ensure_dir(data_root, record=False)
+
+# Actions stack for undo support
+metadata_dir = "metadata"
+ensure_dir(metadata_dir, record=False)
+actions_file = os.path.join(metadata_dir, "actions_stack.json")
+
+
+def load_actions():
+    if os.path.exists(actions_file):
+        try:
+            with open(actions_file, "r", encoding="utf-8") as af:
+                return json.load(af)
+        except Exception:
+            return []
+    return []
+
+
+def save_actions(actions):
+    with open(actions_file, "w", encoding="utf-8") as af:
+        json.dump(actions, af, ensure_ascii=False, indent=2)
+
+
+
+def push_action(action):
+    actions = load_actions()
+    actions.append(action)
+    save_actions(actions)
+
+
+def pop_action():
+    actions = load_actions()
+    if not actions:
+        return None
+    action = actions.pop()
+    save_actions(actions)
+    return action
+
+
+def undo_action(action):
+    t = action.get("type")
+    if t == "create_dir":
+        p = action.get("path")
+        if os.path.isdir(p):
+            try:
+                # remove only if empty
+                if not os.listdir(p):
+                    os.rmdir(p)
+                    print(f"Undo: removed empty directory {p}")
+                else:
+                    ans = input(f"Directory {p} is not empty. Remove recursively? (y/N): ").strip().lower()
+                    if ans == "y":
+                        shutil.rmtree(p)
+                        print(f"Undo: recursively removed {p}")
+                    else:
+                        print(f"Skipped removing non-empty directory {p}")
+            except Exception as e:
+                print(f"Failed to remove directory {p}: {e}")
+        else:
+            print(f"Directory {p} already absent")
+    elif t == "create_file":
+        p = action.get("path")
+        if os.path.isfile(p):
+            try:
+                os.remove(p)
+                print(f"Undo: removed file {p}")
+            except Exception as e:
+                print(f"Failed to remove file {p}: {e}")
+        else:
+            print(f"File {p} already absent")
+    elif t == "append_csv":
+        p = action.get("path")
+        row = action.get("row")
+        csv_created = action.get("csv_created", False)
+        if os.path.isfile(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                # remove last matching row
+                for i in range(len(lines) - 1, -1, -1):
+                    if lines[i].strip() == row.strip():
+                        lines.pop(i)
+                        break
+                # if CSV was created by this action and now only header or empty, remove file
+                if csv_created:
+                    try:
+                        os.remove(p)
+                        print(f"Undo: removed CSV file {p}")
+                    except Exception as e:
+                        print(f"Failed to remove CSV file {p}: {e}")
+                else:
+                    with open(p, "w", encoding="utf-8") as f:
+                        f.writelines(lines)
+                    print(f"Undo: removed CSV row from {p}")
+            except Exception as e:
+                print(f"Failed to undo CSV append in {p}: {e}")
+        else:
+            print(f"CSV file {p} absent")
+    else:
+        print(f"Unknown action type: {t}")
+
+
+def do_undo(n=1):
+    for _ in range(n):
+        action = pop_action()
+        if not action:
+            print("No more actions to undo.")
+            return
+        undo_action(action)
+
+
+def load_csv_rows(csv_path):
+    if not os.path.isfile(csv_path):
+        return []
+    with open(csv_path, "r", encoding="utf-8") as f:
+        lines = [line.rstrip("\n") for line in f if line.strip()]
+    if not lines:
+        return []
+    header = lines[0].lstrip("\ufeff").split(",")
+    rows = [dict(zip(header, line.split(","))) for line in lines[1:]]
+    return rows
+
+
+def write_csv_rows(csv_path, rows):
+    if not rows:
+        return
+    header = ["filename", "source", "category", "subcategory", "date", "word_count", "link"]
+    with open(csv_path, "w", encoding="utf-8") as f:
+        f.write("\ufeff" + ",".join(header) + "\n")
+        for row in rows:
+            f.write(",".join(str(row.get(col, "")) for col in header) + "\n")
+
+
+def undo_last_csv(csv_path):
+    actions = load_actions()
+    for i in range(len(actions) - 1, -1, -1):
+        if actions[i].get("type") == "append_csv":
+            action = actions.pop(i)
+            save_actions(actions)
+            undo_action(action)
+            return
+    print("No CSV append action found to undo.")
+
+
+def prompt_csv_value(prompt_text, default=""):
+    if default:
+        value = input(f"{prompt_text} [{default}]: ").strip()
+        return value if value else default
+    return input(f"{prompt_text}: ").strip()
+
+
+def add_csv_entry(csv_path):
+    ensure_dir(os.path.dirname(csv_path), record=False)
+    csv_exists = os.path.isfile(csv_path)
+    if not csv_exists:
+        with open(csv_path, "w", encoding="utf-8") as f:
+            f.write("\ufefffilename,source,category,subcategory,date,word_count,link\n")
+
+    row = {
+        "filename": prompt_csv_value("Enter filename", ""),
+        "source": prompt_csv_value("Enter source", "Malayalam Wikipedia"),
+        "category": prompt_csv_value("Enter category", ""),
+        "subcategory": prompt_csv_value("Enter subcategory", "none"),
+        "date": prompt_csv_value("Enter date", "2026-06-17"),
+        "word_count": prompt_csv_value("Enter word count", "0"),
+        "link": prompt_csv_value("Enter link", ""),
+    }
+    with open(csv_path, "a", encoding="utf-8") as f:
+        f.write(",".join(str(row[col]) for col in ["filename", "source", "category", "subcategory", "date", "word_count", "link"]) + "\n")
+    push_action({"type": "append_csv", "path": csv_path, "row": ",".join(str(row[col]) for col in ["filename", "source", "category", "subcategory", "date", "word_count", "link"]) + "\n", "csv_created": not csv_exists})
+    print("CSV entry added.")
+
+
+def remove_csv_entry(csv_path):
+    rows = load_csv_rows(csv_path)
+    if not rows:
+        print("No CSV rows available to remove.")
+        return
+    print("\nCSV rows:")
+    for idx, row in enumerate(rows, start=1):
+        print(f"{idx}. {row.get('filename', '')}, {row.get('category', '')}, {row.get('subcategory', '')}, {row.get('date', '')}")
+    choice = input("Enter the row number to remove, or press Enter to cancel: ").strip()
+    if not choice.isdigit():
+        print("Canceling removal.")
+        return
+    idx = int(choice) - 1
+    if idx < 0 or idx >= len(rows):
+        print("Invalid row number.")
+        return
+    removed = rows.pop(idx)
+    write_csv_rows(csv_path, rows)
+    print(f"Removed CSV row: {removed}")
 
 
 def normalize_folder_name(name):
@@ -58,16 +259,16 @@ def choose_or_create_folder(parent_dir, folder_type, allow_none=False):
 
 category = choose_or_create_folder(data_root, "folder")
 output_dir = os.path.join(data_root, category)
-os.makedirs(output_dir, exist_ok=True)
+ensure_dir(output_dir)
 
 subfolder_name = choose_or_create_folder(output_dir, "subfolder", allow_none=True)
 if subfolder_name:
     output_dir = os.path.join(output_dir, subfolder_name)
-    os.makedirs(output_dir, exist_ok=True)
+    ensure_dir(output_dir)
     subsubfolder_name = choose_or_create_folder(output_dir, "sub-subfolder", allow_none=True)
     if subsubfolder_name:
         output_dir = os.path.join(output_dir, subsubfolder_name)
-        os.makedirs(output_dir, exist_ok=True)
+        ensure_dir(output_dir)
         subfolder_name = subsubfolder_name
 else:
     subfolder_name = "none"
@@ -115,12 +316,15 @@ try:
                 f.write("=" * 30 + "\n\n")
                 f.write(clean_text)
 
+            # record created file for undo
+            push_action({"type": "create_file", "path": output_path})
+
             words = len(clean_text.split())
 
             # --- AUTOMATED CSV METADATA LOGGING WITH EXCEL FIX ---
             csv_dir = "metadata"
             csv_path = os.path.join(csv_dir, "sources.csv")
-            os.makedirs(csv_dir, exist_ok=True)
+            ensure_dir(csv_dir, record=False)
 
             csv_exists = os.path.isfile(csv_path)
 
@@ -133,6 +337,8 @@ try:
                         "\ufefffilename,source,category,subcategory,date,word_count,link\n"
                     )
                 csv_file.write(csv_row)
+            # record appended metadata row for undo
+            push_action({"type": "append_csv", "path": csv_path, "row": csv_row, "csv_created": (not csv_exists)})
             # -----------------------------------------------------
 
             print("-" * 60)
@@ -140,6 +346,26 @@ try:
             print(f"📍 Text File: {output_path} ({words} words)")
             print(f"✅ Metadata: Automatically logged entry inside {csv_path}!")
             print("-" * 60)
+
+            while True:
+                print("\nChoose what to do next:")
+                print("1. Undo last step (CSV)")
+                print("2. Remove all operations")
+                print("3. Keep all changes and finish")
+                choice = input("Enter 1-3: ").strip()
+                if choice == "1":
+                    undo_last_csv(csv_path)
+                elif choice == "2":
+                    current_actions = load_actions()
+                    if current_actions:
+                        do_undo(len(current_actions))
+                    print("All operations have been removed.")
+                    break
+                elif choice == "3":
+                    print("Finished. Keeping changes.")
+                    break
+                else:
+                    print("Invalid choice. Please enter a number from 1 to 3.")
         else:
             print("❌ Error: Could not extract layout content.")
     else:
